@@ -1,0 +1,190 @@
+<!DOCTYPE html><html lang="en"><head>
+    <meta charset="utf-8">
+<!-- This site is hosted on Netlify. Anyone can build and deploy a site
+     like this one for free: https://netlify.new/?utm_campaign=loops&utm_source=ai-legible&utm_medium=owned&utm_content=comment&utm_id=0b3df740-f51d-4084-9293-55c62065bc7a
+     Netlify hosting facts for this site: static/SSR served via Netlify Edge. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess Insights</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/jquery.min.js"></script>
+    <script src="js/chess.min.js"></script>
+    <script src="js/chessboard-1.0.0.min.js"></script>
+    <link rel="stylesheet" href="css/chessboard-1.0.0.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>♟ Chess Insights</h1>
+            <p class="subtitle">Learn from your games • Build knowledge over time</p>
+        </header>
+
+        <main>
+            <section class="left-panel">
+                <div class="pgn-section">
+                    <h2>Paste Your PGN</h2>
+                    <textarea id="pgn-input" placeholder="1. e4 e5 2. Nf3 Nc6 3. Bb5 a6..."></textarea>
+                    <div class="buttons">
+                        <label class="btn secondary file-upload-label" title="Load a .pgn or .txt file">
+                            Upload PGN
+                            <input type="file" id="pgn-file-input" accept=".pgn,.txt,text/plain" class="file-input-hidden">
+                        </label>
+                        <button id="load-pgn" class="btn primary">Load Game</button>
+                        <button id="analyze-btn" class="btn secondary">Analyze</button>
+                        <button id="full-analysis-btn" class="btn accent">Full Analysis</button>
+                        <label class="topn-control" for="top-n-moves">
+                            Top N
+                            <input id="top-n-moves" type="number" min="1" max="20" value="3">
+                        </label>
+                    </div>
+                </div>
+
+                <div id="move-list-panel" class="move-list-panel">
+                    <h3>Moves</h3>
+                    <div id="move-list" class="move-list"></div>
+                </div>
+
+                <div id="game-summary" class="game-summary hidden">
+                    <h3>Game Summary</h3>
+                    <div id="analysis-progress" class="analysis-progress hidden">
+                        <div class="progress-bar"><div id="progress-fill" class="progress-fill"></div></div>
+                        <span id="progress-text">0%</span>
+                    </div>
+                    <div id="summary-content" class="summary-content">
+                        <div class="summary-row">
+                            <div class="summary-stat">
+                                <span class="summary-value" id="summary-accuracy">—</span>
+                                <span class="summary-label">Accuracy</span>
+                            </div>
+                            <div class="summary-stat">
+                                <span class="summary-value best-color" id="summary-best">0</span>
+                                <span class="summary-label">Best</span>
+                            </div>
+                            <div class="summary-stat">
+                                <span class="summary-value inaccuracy-color" id="summary-inaccuracies">0</span>
+                                <span class="summary-label">Inaccuracies</span>
+                            </div>
+                            <div class="summary-stat">
+                                <span class="summary-value mistake-color" id="summary-mistakes">0</span>
+                                <span class="summary-label">Mistakes</span>
+                            </div>
+                            <div class="summary-stat">
+                                <span class="summary-value blunder-color" id="summary-blunders">0</span>
+                                <span class="summary-label">Blunders</span>
+                            </div>
+                        </div>
+                        <div class="summary-ratings">
+                            <div class="rating-side">
+                                <span class="rating-label">White</span>
+                                <span class="rating-value" id="rating-white">—</span>
+                                <span class="rating-acpl" id="acpl-white"></span>
+                            </div>
+                            <div class="rating-side">
+                                <span class="rating-label">Black</span>
+                                <span class="rating-value" id="rating-black">—</span>
+                                <span class="rating-acpl" id="acpl-black"></span>
+                            </div>
+                        </div>
+                        <div id="summary-critical" class="summary-critical"></div>
+                        <div id="game-narrative" class="game-narrative hidden"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="board-section">
+                <div id="opening-name" class="opening-name">Starting Position</div>
+                <div class="board-with-eval">
+                    <div id="eval-bar" class="eval-bar">
+                        <div id="eval-bar-fill" class="eval-bar-fill"></div>
+                        <span id="eval-bar-text" class="eval-bar-text">0.0</span>
+                    </div>
+                    <div id="board-wrap" tabindex="-1">
+                        <div id="board"></div>
+                        <svg id="best-move-arrow" class="best-move-arrow" viewBox="0 0 400 400" preserveAspectRatio="none">
+                            <defs>
+                                <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                                    <polygon points="0 0, 6 3, 0 6" fill="#ffd166"></polygon>
+                                </marker>
+                            </defs>
+                            <line id="best-move-line" x1="0" y1="0" x2="0" y2="0"></line>
+                        </svg>
+                    </div>
+                </div>
+                <p class="board-help">Click a piece, then a highlighted square to move. Click the piece again or press Esc to cancel.</p>
+                <div class="game-nav">
+                    <button id="first-btn">⏮</button>
+                    <button id="prev-btn">◀</button>
+                    <button id="flip-btn" title="Flip board">🔄</button>
+                    <span id="move-counter">Move: 0 / 0</span>
+                    <button id="next-btn">▶</button>
+                    <button id="last-btn">⏭</button>
+                </div>
+                <div id="plan-panel" class="plan-panel">
+                    <div class="plan-title">Long-Term Plan</div>
+                    <div id="plan-summary" class="plan-summary">Evaluating current position...</div>
+                    <div id="plan-lines" class="plan-lines"></div>
+                </div>
+            </section>
+
+            <section class="analysis-section">
+                <h2>Insights</h2>
+                <div id="engine-eval" class="eval-box">
+                    <span class="label">Engine:</span>
+                    <span id="eval-score">Waiting for analysis...</span>
+                </div>
+                <div id="insights-container">
+                    <div class="insight-placeholder">Load a PGN and click "Analyze" to get insights</div>
+                </div>
+                <div id="engine-debug" class="engine-debug">
+                    <div class="debug-title">Engine Debug</div>
+                    <div id="engine-debug-meta" class="debug-meta">No analysis yet.</div>
+                    <pre id="engine-debug-lines" class="debug-lines">-</pre>
+                </div>
+
+                <div id="coach-chat" class="coach-chat">
+                    <h3 class="coach-chat-heading">Ask the coach</h3>
+                    <p class="coach-chat-note">Runs in your browser only — no API keys, no paid tokens. Answers use your <strong>Full Analysis</strong> data.</p>
+                    <div id="coach-messages" class="coach-messages"></div>
+                    <div class="coach-chips">
+                        <button type="button" class="coach-chip" data-ask="Which blunders?">Which blunders?</button>
+                        <button type="button" class="coach-chip" data-ask="List mistakes">Mistakes</button>
+                        <button type="button" class="coach-chip" data-ask="Worst moves">Worst moves</button>
+                        <button type="button" class="coach-chip" data-ask="Summary">Summary</button>
+                        <button type="button" class="coach-chip" data-ask="What opening is this?">Opening</button>
+                        <button type="button" class="coach-chip" data-ask="Help">Help</button>
+                    </div>
+                    <div class="coach-input-row">
+                        <input type="text" id="coach-input" placeholder="e.g. Which blunders? Black mistakes?" autocomplete="off">
+                        <button type="button" id="coach-send" class="btn secondary">Send</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <aside class="knowledge-panel">
+            <h2>Knowledge Base</h2>
+            <div class="knowledge-stats">
+                <div class="stat">
+                    <span class="stat-value" id="positions-analyzed">0</span>
+                    <span class="stat-label">Positions Analyzed</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value" id="patterns-learned">0</span>
+                    <span class="stat-label">Patterns Learned</span>
+                </div>
+            </div>
+            <div id="knowledge-list"></div>
+            <button id="export-knowledge" class="btn small">Export Knowledge</button>
+        </aside>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+
+    <script src="js/openings.js"></script>
+    <script src="js/stockfish.js"></script>
+    <script src="js/knowledge.js"></script>
+    <script src="js/analyzer.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/coach-chat.js"></script>
+
+
+</body></html>
