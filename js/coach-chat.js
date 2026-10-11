@@ -191,8 +191,20 @@
         if (!box) return;
         const div = document.createElement('div');
         div.className = 'coach-msg ' + (role === 'user' ? 'coach-msg-user' : 'coach-msg-coach');
-        if (isHtml) div.innerHTML = htmlOrText;
-        else div.textContent = htmlOrText;
+        if (isHtml) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(String(htmlOrText), 'text/html');
+            doc.body.querySelectorAll('script,style,iframe,object,embed,link,meta').forEach((n) => n.remove());
+            doc.body.querySelectorAll('*').forEach((el) => {
+                [...el.attributes].forEach((attr) => {
+                    const name = attr.name.toLowerCase();
+                    const value = attr.value.trim().toLowerCase();
+                    if (name.startsWith('on')) el.removeAttribute(attr.name);
+                    if ((name === 'href' || name === 'src') && value.startsWith('javascript:')) el.removeAttribute(attr.name);
+                });
+            });
+            div.append(...doc.body.childNodes);
+        } else div.textContent = htmlOrText;
         box.appendChild(div);
         box.scrollTop = box.scrollHeight;
     }
