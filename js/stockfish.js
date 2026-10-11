@@ -11,11 +11,11 @@ class StockfishEngine {
         this.handshakeMs = 20000;
         this.analyzeMs = 4000;
         this.movetimeMs = 2000;
-        this.workerUrls = [
-            '/js/stockfish-worker-16.js',
-            '/js/stockfish-worker.js',
-            'https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js'
-        ];
+        // Resolve from the wrapper script, including GitHub Pages project paths.
+        const scriptUrl = typeof document !== 'undefined' && document.currentScript
+            ? document.currentScript.src
+            : new URL('js/stockfish.js', globalThis.location.href).href;
+        this.workerUrls = [new URL('stockfish-worker.js', scriptUrl).href];
     }
 
     _normalizeData(data) {

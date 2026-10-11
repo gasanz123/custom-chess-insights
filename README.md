@@ -27,17 +27,18 @@ published as a static site on Netlify or GitHub Pages.
 The downloaded archive omitted the original piece PNGs. Embedded SVG chess symbols
 replace them so the board does not depend on missing image files.
 
-It also omitted `js/stockfish-worker-16.js` and `js/stockfish-worker.js` and their
-engine assets. The original wrapper attempts a CDN worker fallback, which browsers
-may reject because it is cross-origin. Full Stockfish analysis requires restoring
-a compatible local worker and its assets. The original application includes
-fallback analysis; this import does not add or claim a working Stockfish engine.
+A local Stockfish 10.0.2 worker is now bundled in `js/stockfish-worker.js`.
+The engine is single-threaded asm.js and requires no CDN, WebAssembly, or special
+cross-origin headers. Its URL resolves relative to the wrapper script, so it works
+under the GitHub Pages repository path. Source links and GPL-3.0 attribution are
+in `js/vendor/STOCKFISH-SOURCE.md`.
 
 ## Verification
 
 ```sh
 node tests/click-to-move.cjs
 node --check js/app.js
+node tests/stockfish-worker.cjs
 ```
 
 The move checks cover legal and illegal destinations, selection changes, move
