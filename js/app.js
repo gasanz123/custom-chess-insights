@@ -1084,24 +1084,30 @@ function drawBestMoveArrow(uciMove, fen = lastBestMoveFen || game.fen()) {
     const line = document.getElementById('best-move-line');
     if (!fromEl || !toEl || !wrap || !svg || !line) { clearBestMoveArrow(); return; }
 
-    const br = wrap.getBoundingClientRect();
-    // Arrow coordinates are CSS pixels; keep the SVG coordinate system aligned
-    // with the actual responsive board instead of assuming a 400px board.
-    svg.setAttribute('viewBox', `0 0 ${br.width} ${br.height}`);
-    const squareSize = br.width / 8;
-    const headSize = Math.max(18, Math.min(26, squareSize * 0.5));
-    const marker = document.getElementById('arrowhead');
-    if (marker) {
-        marker.setAttribute('markerWidth', String(headSize));
-        marker.setAttribute('markerHeight', String(headSize));
-    }
-    line.style.strokeWidth = String(Math.max(4, Math.min(7, squareSize * 0.14)));
+    // Match SVG units to its own rendered viewport, not a fixed 400px board.
+    // DOM square centers remain correct for either orientation and rounded sizes.
+    const br = svg.getBoundingClientRect();
     const fr = fromEl.getBoundingClientRect();
     const tr = toEl.getBoundingClientRect();
-    line.setAttribute('x1', String(fr.left + fr.width / 2 - br.left));
-    line.setAttribute('y1', String(fr.top + fr.height / 2 - br.top));
-    line.setAttribute('x2', String(tr.left + tr.width / 2 - br.left));
-    line.setAttribute('y2', String(tr.top + tr.height / 2 - br.top));
+    if (!br.width || !br.height) return;
+    svg.setAttribute('viewBox', `0 0 ${br.width} ${br.height}`);
+    const squareSize = Math.min(fr.width, fr.height);
+    const headSize = squareSize * 0.46;
+    const marker = document.getElementById('arrowhead');
+    marker.setAttribute('markerWidth', String(headSize));
+    marker.setAttribute('markerHeight', String(headSize));
+    line.style.strokeWidth = String(squareSize * 0.11);
+    const x1 = fr.left + fr.width / 2 - br.left;
+    const y1 = fr.top + fr.height / 2 - br.top;
+    const x2 = tr.left + tr.width / 2 - br.left;
+    const y2 = tr.top + tr.height / 2 - br.top;
+    line.setAttribute('x1', String(x1));
+    line.setAttribute('y1', String(y1));
+    line.setAttribute('x2', String(x2));
+    line.setAttribute('y2', String(y2));
+    // Stop the rounded shaft inside the head; the marker tip is exactly x2/y2.
+    const length = Math.hypot(x2 - x1, y2 - y1);
+    line.style.strokeDasharray = `${Math.max(0, length - headSize * 0.72)} ${length}`;
     svg.classList.add('visible');
     lastBestMoveUci = uciMove;
     lastBestMoveFen = fen;
