@@ -949,6 +949,8 @@ async function analyzePosition(options = {}) {
         if (usingEngine) {
             try { engineResult = await stockfishEngine.analyze(fen, getTopNMovesSetting()); }
             catch (e) {
+                // A superseded failure must not disable the engine or launch fallback work.
+                if (runId !== analysisRunId || fen !== game.fen()) return;
                 stockfishEngine.isReady = false;
                 engineResult = await simpleAnalyzer.analyze(fen, getTopNMovesSetting());
                 engineResult.rawLines = [`engine-error: ${e && e.message || e}`, ...(engineResult.rawLines || [])];
