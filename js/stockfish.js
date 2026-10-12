@@ -7,8 +7,9 @@ class StockfishEngine {
         this._lineHandler = null;
         this._initPromise = null;
         this.isAnalyzing = false;
+        this._analysisQueue = Promise.resolve();
         this.depth = 10;
-        this.handshakeMs = 20000;
+        this.handshakeMs = 8000;
         this.analyzeMs = 4000;
         this.movetimeMs = 2000;
         // Resolve from the wrapper script, including GitHub Pages project paths.
@@ -30,6 +31,7 @@ class StockfishEngine {
     }
 
     async init() {
+        if (this.isReady) return;
         if (this._initPromise) return this._initPromise;
 
         this._initPromise = this._initInternal();
@@ -66,6 +68,7 @@ class StockfishEngine {
 
     _spawnWorkerFromUrl(url) {
         return new Promise((resolve, reject) => {
+            this._workerError = null;
             const worker = new Worker(url);
             const bootTimeout = setTimeout(() => {
                 reject(new Error(`worker boot timeout for ${url}`));
@@ -80,7 +83,10 @@ class StockfishEngine {
 
             worker.onerror = (e) => {
                 clearTimeout(bootTimeout);
-                reject(e.error || new Error(`worker error for ${url}`));
+                const error = e.error || new Error(`Could not load Stockfish worker: ${url}`);
+                this._workerError = error;
+                if (this._startupReject) this._startupReject(error);
+                reject(error);
             };
 
             this.transport = {
@@ -108,17 +114,27 @@ class StockfishEngine {
         this.transport = null;
         this.isReady = false;
         this._lineHandler = null;
+        this._startupReject = null;
     }
 
     _handshake(ms) {
         return new Promise((resolve, reject) => {
+            if (this._workerError) { reject(this._workerError); return; }
             let sawUciOk = false;
             let pingTimer = null;
             const t = setTimeout(() => {
                 this._lineHandler = null;
                 if (pingTimer) clearInterval(pingTimer);
+                this._startupReject = null;
                 reject(new Error('Stockfish handshake timeout'));
             }, ms);
+            this._startupReject = (error) => {
+                clearTimeout(t);
+                if (pingTimer) clearInterval(pingTimer);
+                this._lineHandler = null;
+                this._startupReject = null;
+                reject(error);
+            };
             this._lineHandler = (line) => {
                 if (line.includes('uciok')) {
                     sawUciOk = true;
@@ -128,6 +144,7 @@ class StockfishEngine {
                     clearTimeout(t);
                     if (pingTimer) clearInterval(pingTimer);
                     this._lineHandler = null;
+                    this._startupReject = null;
                     resolve();
                 }
             };
@@ -174,6 +191,13 @@ class StockfishEngine {
     }
 
     analyze(fen, topN = 1, depth = this.depth, opts = {}) {
+        // One worker has one response handler. Searches must never overlap.
+        const search = this._analysisQueue.then(() => this._analyze(fen, topN, depth, opts));
+        this._analysisQueue = search.catch(() => {});
+        return search;
+    }
+
+    _analyze(fen, topN = 1, depth = this.depth, opts = {}) {
         const movetimeMs = opts.movetimeOverride || this.movetimeMs;
         const analyzeTimeout = opts.timeoutOverride || this.analyzeMs;
         const skipNewGame = opts.skipNewGame || false;
@@ -216,7 +240,9 @@ class StockfishEngine {
             };
 
             const timeout = setTimeout(() => {
-                this.send('stop');
+                // Stop by terminating on timeout, so delayed bestmove messages
+                // cannot be mistaken for the next queued position's result.
+                this._teardownWorker();
                 if ((!bestMoves || bestMoves.length === 0) && principalVariation[0]) {
                     const pvMove = principalVariation[0];
                     bestMoves = [{ move: pvMove, san: this.moveToSan(pvMove, fen), pv: principalVariation }];

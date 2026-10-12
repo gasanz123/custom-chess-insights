@@ -10,26 +10,31 @@ class KnowledgeBase {
     }
 
     load() {
-        const stored = localStorage.getItem(this.storageKey);
-        if (stored) {
-            this.data = JSON.parse(stored);
-        } else {
-            this.data = {
-                version: 1,
-                created: new Date().toISOString(),
-                lastUpdated: new Date().toISOString(),
-                positionsAnalyzed: 0,
-                patterns: {
-                    openings: {},
-                    tactics: {},
-                    positional: {},
-                    mistakes: {},
-                    endgames: {}
-                },
-                insights: [],
-                concepts: {}
-            };
-            this.save();
+        this.data = {
+            version: 1,
+            created: new Date().toISOString(),
+            lastUpdated: new Date().toISOString(),
+            positionsAnalyzed: 0,
+            patterns: { openings: {}, tactics: {}, positional: {}, mistakes: {}, endgames: {} },
+            insights: [],
+            concepts: {}
+        };
+        try {
+            const stored = localStorage.getItem(this.storageKey);
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                if (!parsed || !Array.isArray(parsed.insights) || !parsed.patterns || !parsed.concepts) {
+                    throw new Error('Invalid saved knowledge');
+                }
+                this.data = parsed;
+            } else {
+                this.save();
+            }
+        } catch (error) {
+            // Private browsers or damaged saved data must not stop board analysis.
+            // Preserve existing storage and continue with a fresh in-memory session.
+            this.persistenceDisabled = true;
+            console.warn('Knowledge storage unavailable; continuing in memory.', error);
         }
     }
 
@@ -52,7 +57,8 @@ class KnowledgeBase {
                     return;
                 }
             }
-            throw e;
+            this.persistenceDisabled = true;
+            console.warn('Knowledge storage unavailable; continuing in memory.', e);
         }
     }
 

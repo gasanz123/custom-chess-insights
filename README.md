@@ -39,8 +39,28 @@ in `js/vendor/STOCKFISH-SOURCE.md`.
 node tests/click-to-move.cjs
 node --check js/app.js
 node tests/stockfish-worker.cjs
+node tests/evaluation-display.cjs
+node tests/engine-startup.cjs
+node tests/arrow-turn.cjs
 ```
 
 The move checks cover legal and illegal destinations, selection changes, move
 history, branching, castling, promotion, and en passant. Browser rendering has
 not been verified in this environment.
+
+## Evaluation startup
+
+The score is visible above the board as well as in Insights. While Stockfish
+loads, an explicitly labeled estimated score is displayed. Worker load errors
+fall back immediately; an unresponsive engine has an eight-second startup limit.
+Browser storage failures do not stop evaluation or board controls.
+
+## Arrow position safety
+
+Position changes invalidate pending analysis immediately, including the interval
+before the next automatic search starts. Results and cached arrow redraws must
+match the current FEN, and arrow moves must be legal for its side to move.
+Stockfish searches run sequentially so concurrent callers cannot replace each
+other's response handler. A timed-out worker is terminated to prevent delayed
+messages contaminating a later search. The engine is reinitialized on the next
+analysis request; estimated evaluation remains available.
