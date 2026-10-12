@@ -961,7 +961,7 @@ async function analyzePosition(options = {}) {
         console.error('Analysis failed:', e);
         updateEngineDebugPanel({ evaluation: null, bestMoves: [], principalVariation: [], depth: 0, rawLines: [`error: ${e && e.message || e}`] });
         if (evaluationWhite === null) document.getElementById('eval-score').textContent = 'Analysis failed';
-        document.getElementById('insights-container').innerHTML = '<div class="insight-placeholder">Could not analyze this position.</div>';
+        setInsightsContent('<div class="insight-placeholder">Could not analyze this position.</div>');
         updateLongTermPlanPanel(null, null);
     }
 }
@@ -981,14 +981,21 @@ function updateEvaluationScore(evaluationWhite, estimated = false) {
     if (boardScore) boardScore.textContent = evalEl.textContent;
 }
 
+function setInsightsContent(html) {
+    const container = document.getElementById('insights-container');
+    container.innerHTML = html;
+    // New analysis belongs to a new position; start its insights at the top.
+    // Scroll this panel only, keeping the board and page in place.
+    container.scrollTop = 0;
+}
+
 function displayAnalysis(engineResult, insights, fen, evaluationWhite) {
     if (fen !== game.fen()) return;
     updateEvaluationScore(evaluationWhite, !stockfishEngine.isReady);
     const topBM = engineResult.bestMoves && engineResult.bestMoves[0] ? engineResult.bestMoves[0].move : null;
     if (topBM) drawBestMoveArrow(topBM, fen); else clearBestMoveArrow();
 
-    const container = document.getElementById('insights-container');
-    if (insights.length === 0) { container.innerHTML = '<div class="insight-placeholder">No specific insights</div>'; return; }
+    if (insights.length === 0) { setInsightsContent('<div class="insight-placeholder">No specific insights</div>'); return; }
 
     const topMoves = (engineResult.bestMoves || []).slice(0, getTopNMovesSetting()).filter(m => m && (m.san || m.move));
     const stm = (fen.split(' ')[1] || 'w') === 'w' ? 'White' : 'Black';
@@ -1010,13 +1017,13 @@ function displayAnalysis(engineResult, insights, fen, evaluationWhite) {
             chessAnalyzer.pvToDescription(pvSan, (fen.split(' ')[1] || 'w') === 'w' ? 'White' : 'Black')
         }</div></div>` : '';
 
-    container.innerHTML = `${topMovesHtml}${pvHtml}${insights.map(ins => `
+    setInsightsContent(`${topMovesHtml}${pvHtml}${insights.map(ins => `
         <div class="insight-card">
             <span class="type">${ins.type || ins.category}</span>
             <div class="content">${ins.explanation}</div>
             ${ins.bestMoves && ins.bestMoves[0] ? `<div class="best-move">Best: ${ins.bestMoves[0].san || ins.bestMoves[0].move}</div>` : ''}
         </div>
-    `).join('')}`;
+    `).join('')}`);
 }
 
 // === Arrow Drawing ===
