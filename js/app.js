@@ -1049,6 +1049,17 @@ function drawBestMoveArrow(uciMove, fen = lastBestMoveFen || game.fen()) {
     if (!fromEl || !toEl || !wrap || !svg || !line) { clearBestMoveArrow(); return; }
 
     const br = wrap.getBoundingClientRect();
+    // Arrow coordinates are CSS pixels; keep the SVG coordinate system aligned
+    // with the actual responsive board instead of assuming a 400px board.
+    svg.setAttribute('viewBox', `0 0 ${br.width} ${br.height}`);
+    const squareSize = br.width / 8;
+    const headSize = Math.max(18, Math.min(26, squareSize * 0.5));
+    const marker = document.getElementById('arrowhead');
+    if (marker) {
+        marker.setAttribute('markerWidth', String(headSize));
+        marker.setAttribute('markerHeight', String(headSize));
+    }
+    line.style.strokeWidth = String(Math.max(4, Math.min(7, squareSize * 0.14)));
     const fr = fromEl.getBoundingClientRect();
     const tr = toEl.getBoundingClientRect();
     line.setAttribute('x1', String(fr.left + fr.width / 2 - br.left));
