@@ -45,6 +45,18 @@ vm.runInContext(fs.readFileSync(path.join(root, 'js/stockfish.js'), 'utf8'), con
             const game = new Chess();
             assert.ok(game.move({ from: candidate.move.slice(0, 2), to: candidate.move.slice(2, 4), promotion: candidate.move[4] || 'q' }), 'candidate is legal');
         }
+        const blackPosition = new Chess(); blackPosition.move('e4');
+        const positions = [new Chess().fen(), blackPosition.fen()];
+        const searches = await Promise.all(positions.map(fen => vm.runInContext(
+            `stockfishEngine.analyze('${fen}', 2, 8, { movetimeOverride: 150, timeoutOverride: 3000 })`, context)));
+        searches.forEach((search, index) => {
+            assert.ok(search.bestMoves.length > 0, 'overlapping callers both receive their own result');
+            for (const candidate of search.bestMoves) {
+                const position = new Chess(positions[index]);
+                assert.ok(position.move({ from: candidate.move.slice(0, 2), to: candidate.move.slice(2, 4), promotion: candidate.move[4] || 'q' }), 'candidate matches the requested side to move');
+            }
+        });
+        console.log('Concurrent callers returned legal moves for White and Black respectively.');
         console.log('Local worker passed UCI handshake and returned legal moves through the application wrapper.');
         console.log(JSON.stringify({ evaluation: result.evaluation, candidates: result.bestMoves.length }));
     } finally { if (actualWorker) await actualWorker.terminate(); }

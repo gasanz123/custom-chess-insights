@@ -6,6 +6,7 @@ let currentFen = game.fen();
 let moveHistory = [];
 let currentMoveIndex = -1;
 let lastBestMoveUci = null;
+let lastBestMoveFen = null;
 let analysisRunId = 0;
 let autoAnalyzeTimer = null;
 let moveAnnotations = [];
@@ -21,7 +22,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateLongTermPlanPanel(null, null);
     updateOpeningName();
     renderMoveList();
-    await ensureEngineReady();
     analyzePosition({ auto: true });
 });
 
@@ -115,6 +115,9 @@ function onSnapEnd() {
 }
 
 function scheduleAutoAnalyze() {
+    // Invalidate now, before the debounce timer starts the next search.
+    analysisRunId++;
+    clearBestMoveArrow();
     if (autoAnalyzeTimer) clearTimeout(autoAnalyzeTimer);
     autoAnalyzeTimer = setTimeout(() => analyzePosition({ auto: true }), 150);
 }
@@ -126,13 +129,14 @@ function getTopNMovesSetting() {
 }
 
 async function ensureEngineReady() {
-    const evalEl = document.getElementById('eval-score');
-    if (evalEl) { evalEl.textContent = 'Starting engine...'; evalEl.style.color = '#4a9eff'; }
+    const status = document.getElementById('engine-status');
+    if (status) status.textContent = 'Stockfish is loading; showing an estimated score.';
     try {
         await stockfishEngine.init();
-        if (evalEl) { evalEl.textContent = 'Engine ready'; evalEl.style.color = '#6fcf97'; }
-    } catch (_) {
-        if (evalEl) { evalEl.textContent = 'Engine unavailable — fallback active'; evalEl.style.color = '#4a9eff'; }
+        if (status) status.textContent = 'Stockfish ready';
+    } catch (error) {
+        if (status) status.textContent = 'Stockfish could not start; showing an estimated score.';
+        updateEngineDebugPanel({ evaluation: null, rawLines: [`engine startup: ${error.message || error}`] });
     }
 }
 
@@ -244,6 +248,8 @@ function onPgnFileSelected(e) {
 
 // === Game Loading ===
 function loadPgn() {
+    analysisRunId++;
+    clearBestMoveArrow();
     clearSelection();
     const raw = document.getElementById('pgn-input').value;
     if (!normalizePgnInput(raw)) { showToast('Please paste a PGN first'); return; }
@@ -894,10 +900,20 @@ async function analyzePosition(options = {}) {
     const fen = game.fen();
     currentFen = fen;
 
-    if (!stockfishEngine.isReady) { try { await ensureEngineReady(); } catch (_) {} }
+    if (!stockfishEngine.isReady) {
+        const estimate = await simpleAnalyzer.analyze(fen, getTopNMovesSetting());
+        if (runId !== analysisRunId || fen !== game.fen()) return;
+        const score = toWhitePovCp(estimate.evaluation, estimate.scorePerspective || 'white', fen);
+        updateEvalBar(score);
+        updateEvaluationScore(score, true);
+        await ensureEngineReady();
+        if (runId !== analysisRunId || fen !== game.fen()) return;
+    }
     const usingEngine = stockfishEngine.isReady;
+    let evaluationWhite = null;
 
-    document.getElementById('eval-score').textContent = usingEngine ? 'Analyzing...' : 'Heuristic mode';
+    const engineStatus = document.getElementById('engine-status');
+    if (engineStatus) engineStatus.textContent = usingEngine ? 'Stockfish analyzing…' : 'Estimated score (Stockfish unavailable)';
 
     try {
         let engineResult = null;
@@ -923,11 +939,12 @@ async function analyzePosition(options = {}) {
             engineResult.rawLines.push(...(fb.rawLines || []), 'fallback-score-used');
         }
 
-        const evaluationWhite = toWhitePovCp(engineResult.evaluation, engineResult.scorePerspective || 'white', fen);
+        evaluationWhite = toWhitePovCp(engineResult.evaluation, engineResult.scorePerspective || 'white', fen);
 
-        if (runId !== analysisRunId) return;
+        if (runId !== analysisRunId || fen !== game.fen()) return;
         updateEngineDebugPanel(engineResult);
         updateEvalBar(evaluationWhite);
+        updateEvaluationScore(evaluationWhite, !usingEngine);
 
         const analysisGame = new Chess(fen);
         let insights = chessAnalyzer.analyze(analysisGame, fen, evaluationWhite, engineResult.bestMoves);
@@ -936,31 +953,39 @@ async function analyzePosition(options = {}) {
 
         window.knowledgeBase.recordPosition(fen, insights);
         displayAnalysis(engineResult, insights, fen, evaluationWhite);
+        if (engineStatus && usingEngine) engineStatus.textContent = `Stockfish · depth ${engineResult.depth || 0}`;
         updateLongTermPlanPanel(engineResult, evaluationWhite);
         updateKnowledgeDisplay();
     } catch (e) {
-        if (runId !== analysisRunId) return;
+        if (runId !== analysisRunId || fen !== game.fen()) return;
         console.error('Analysis failed:', e);
         updateEngineDebugPanel({ evaluation: null, bestMoves: [], principalVariation: [], depth: 0, rawLines: [`error: ${e && e.message || e}`] });
-        document.getElementById('eval-score').textContent = 'Analysis failed';
+        if (evaluationWhite === null) document.getElementById('eval-score').textContent = 'Analysis failed';
         document.getElementById('insights-container').innerHTML = '<div class="insight-placeholder">Could not analyze this position.</div>';
         updateLongTermPlanPanel(null, null);
     }
 }
 
-function displayAnalysis(engineResult, insights, fen, evaluationWhite) {
+function updateEvaluationScore(evaluationWhite, estimated = false) {
     const evalEl = document.getElementById('eval-score');
     if (evaluationWhite !== null && evaluationWhite !== undefined) {
         const ev = evaluationWhite / 100;
-        evalEl.textContent = `${ev >= 0 ? '+' : ''}${ev.toFixed(2)} (White POV)`;
+        evalEl.textContent = `${ev >= 0 ? '+' : ''}${ev.toFixed(2)} (White POV)${estimated ? ' · estimated' : ''}`;
         evalEl.style.color = ev > 0.5 ? '#6fcf97' : ev < -0.5 ? '#f06565' : '#4a9eff';
     } else {
         evalEl.textContent = stockfishEngine.isReady ? 'No score yet' : 'Heuristic only';
         evalEl.style.color = '#4a9eff';
     }
 
+    const boardScore = document.getElementById('board-eval-score');
+    if (boardScore) boardScore.textContent = evalEl.textContent;
+}
+
+function displayAnalysis(engineResult, insights, fen, evaluationWhite) {
+    if (fen !== game.fen()) return;
+    updateEvaluationScore(evaluationWhite, !stockfishEngine.isReady);
     const topBM = engineResult.bestMoves && engineResult.bestMoves[0] ? engineResult.bestMoves[0].move : null;
-    if (topBM) drawBestMoveArrow(topBM); else clearBestMoveArrow();
+    if (topBM) drawBestMoveArrow(topBM, fen); else clearBestMoveArrow();
 
     const container = document.getElementById('insights-container');
     if (insights.length === 0) { container.innerHTML = '<div class="insight-placeholder">No specific insights</div>'; return; }
@@ -1001,11 +1026,20 @@ function getSquareElement(sq) {
 
 function clearBestMoveArrow() {
     lastBestMoveUci = null;
+    lastBestMoveFen = null;
     const svg = document.getElementById('best-move-arrow');
     if (svg) svg.classList.remove('visible');
 }
 
-function drawBestMoveArrow(uciMove) {
+function drawBestMoveArrow(uciMove, fen = lastBestMoveFen || game.fen()) {
+    // Deferred redraws and worker results must refer to this exact position.
+    if (fen !== game.fen() || !/^[a-h][1-8][a-h][1-8][qrbn]?$/.test(uciMove || '')) {
+        clearBestMoveArrow();
+        return;
+    }
+    const position = new Chess(fen);
+    const legalMove = position.move({ from: uciMove.slice(0, 2), to: uciMove.slice(2, 4), promotion: uciMove[4] || 'q' });
+    if (!legalMove) { clearBestMoveArrow(); return; }
     if (!uciMove || uciMove.length < 4) { clearBestMoveArrow(); return; }
     const fromEl = getSquareElement(uciMove.slice(0, 2));
     const toEl = getSquareElement(uciMove.slice(2, 4));
@@ -1023,6 +1057,7 @@ function drawBestMoveArrow(uciMove) {
     line.setAttribute('y2', String(tr.top + tr.height / 2 - br.top));
     svg.classList.add('visible');
     lastBestMoveUci = uciMove;
+    lastBestMoveFen = fen;
 }
 
 // === Knowledge ===
