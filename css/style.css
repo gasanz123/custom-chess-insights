@@ -383,7 +383,6 @@ header h1 { font-size: 2rem; margin-bottom: 4px; }
     stroke: #ffd166;
     stroke-width: 6;
     stroke-linecap: round;
-    marker-end: url(style.css#arrowhead);
     filter: drop-shadow(0 0 4px rgba(0,0,0,0.45));
 }
 
