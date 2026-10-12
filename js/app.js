@@ -52,10 +52,39 @@ function initBoard() {
         onSnapEnd: onSnapEnd
     });
     if (board) board.position(game.fen(), false);
-    document.getElementById('board').addEventListener('click', (event) => {
+    initBoardInteraction();
+}
+
+function initBoardInteraction() {
+    const el = document.getElementById('board');
+    let press = null;
+    el.addEventListener('pointerdown', (event) => {
+        if (!event.isPrimary || event.button !== 0) return;
         const square = event.target.closest('[data-square]');
-        if (square) onSquareClick(square.dataset.square);
+        if (!square) return;
+        press = { id: event.pointerId, square: square.dataset.square, x: event.clientX, y: event.clientY, moved: false, type: event.pointerType };
+        el.setPointerCapture(event.pointerId);
+        event.preventDefault();
     });
+    el.addEventListener('pointermove', (event) => {
+        if (press && press.id === event.pointerId && Math.hypot(event.clientX - press.x, event.clientY - press.y) > 8) press.moved = true;
+    });
+    el.addEventListener('pointerup', (event) => {
+        if (!press || press.id !== event.pointerId) return;
+        const start = press;
+        press = null;
+        const target = document.elementFromPoint(event.clientX, event.clientY)?.closest('#board [data-square]');
+        if (!target) return;
+        if (!start.moved) onSquareClick(target.dataset.square);
+        else if (start.type === 'mouse' && !isFullAnalysisRunning) {
+            const piece = game.get(start.square);
+            if (piece && piece.color === game.turn() && !game.game_over() && onDrop(start.square, target.dataset.square) !== 'snapback') onSnapEnd();
+        }
+        event.preventDefault();
+    });
+    el.addEventListener('pointercancel', () => { press = null; });
+    el.addEventListener('lostpointercapture', () => { press = null; });
+    el.addEventListener('dragstart', (event) => event.preventDefault());
 }
 
 function clearSelection() {

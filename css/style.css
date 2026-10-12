@@ -785,3 +785,7 @@ main { display: contents; }
     .move-list-table td { height: 44px; }
     .debug-lines { white-space: pre-wrap; overflow-wrap: anywhere; }
 }
+
+/* Keep touch panning disabled only inside the chessboard. */
+#board, #board [data-square] { touch-action: none; user-select: none; -webkit-user-select: none; }
+#board img { -webkit-user-drag: none; }
