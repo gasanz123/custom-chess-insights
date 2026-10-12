@@ -21,6 +21,8 @@ body {
     gap: 16px;
 }
 
+main { display: contents; }
+
 header {
     grid-column: 1 / -1;
     text-align: center;
@@ -304,6 +306,9 @@ header h1 { font-size: 2rem; margin-bottom: 4px; }
 }
 
 .board-with-eval {
+    width: 430px;
+    max-width: 100%;
+    min-width: 0;
     display: flex;
     gap: 4px;
     align-items: stretch;
@@ -312,7 +317,7 @@ header h1 { font-size: 2rem; margin-bottom: 4px; }
 /* Eval Bar */
 .eval-bar {
     width: 26px;
-    min-height: 400px;
+    min-height: 0;
     position: relative;
     background: #333;
     border-radius: 5px;
@@ -346,7 +351,7 @@ header h1 { font-size: 2rem; margin-bottom: 4px; }
 
 #board {
     width: 400px;
-    height: 400px;
+    height: auto;
     max-width: 100%;
     border-radius: 6px;
     overflow: hidden;
@@ -354,11 +359,12 @@ header h1 { font-size: 2rem; margin-bottom: 4px; }
 }
 
 #board-wrap {
+    flex: 1 1 0;
     position: relative;
     width: 400px;
     max-width: 100%;
-    min-width: 280px;
-    min-height: 280px;
+    min-width: 0;
+    min-height: 0;
     outline: none;
 }
 
@@ -712,7 +718,7 @@ header h1 { font-size: 2rem; margin-bottom: 4px; }
 /* === Responsive === */
 @media (max-width: 1200px) {
     .container {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
     }
 
     .left-panel,
@@ -729,7 +735,7 @@ header h1 { font-size: 2rem; margin-bottom: 4px; }
     header h1 { font-size: 1.5rem; }
 
     #board, #board-wrap { width: 100% !important; min-width: 0; }
-    .eval-bar { min-height: 280px; }
+    .eval-bar { min-height: 0; }
 
     .buttons { flex-direction: column; align-items: stretch; }
     .game-nav { flex-wrap: wrap; justify-content: center; }

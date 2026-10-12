@@ -5,7 +5,7 @@
      Netlify hosting facts for this site: static/SSR served via Netlify Edge. -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chess Insights</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=arrow-size-fix-1">
     <script src="js/jquery.min.js"></script>
     <script src="js/chess.min.js"></script>
     <script src="js/chessboard-1.0.0.min.js"></script>
@@ -103,8 +103,8 @@
                         <div id="board"></div>
                         <svg id="best-move-arrow" class="best-move-arrow" viewBox="0 0 400 400" preserveAspectRatio="none">
                             <defs>
-                                <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-                                    <polygon points="0 0, 6 3, 0 6" fill="#ffd166"></polygon>
+                                <marker id="arrowhead" markerUnits="userSpaceOnUse" viewBox="0 0 24 24" markerWidth="24" markerHeight="24" refX="22" refY="12" orient="auto">
+                                    <polygon points="0 0, 24 12, 0 24, 6 12" fill="#ffd166"></polygon>
                                 </marker>
                             </defs>
                             <line marker-end="url(#arrowhead)" id="best-move-line" x1="0" y1="0" x2="0" y2="0"></line>
@@ -182,10 +182,10 @@
     <div id="toast" class="toast hidden"></div>
 
     <script src="js/openings.js"></script>
-    <script src="js/stockfish.js?v=arrow-turn-fix-1"></script>
-    <script src="js/knowledge.js?v=arrow-turn-fix-1"></script>
+    <script src="js/stockfish.js?v=arrow-size-fix-1"></script>
+    <script src="js/knowledge.js?v=arrow-size-fix-1"></script>
     <script src="js/analyzer.js"></script>
-    <script src="js/app.js?v=arrow-turn-fix-1"></script>
+    <script src="js/app.js?v=arrow-size-fix-1"></script>
     <script src="js/coach-chat.js"></script>
 
 
