@@ -45,8 +45,31 @@ node tests/arrow-turn.cjs
 ```
 
 The move checks cover legal and illegal destinations, selection changes, move
-history, branching, castling, promotion, and en passant. Browser rendering has
-not been verified in this environment.
+history, branching, castling, promotion, and en passant. Browser rendering is covered by the mobile regression test below.
+
+## Mobile browser regression
+
+The layout stacks the board, PGN controls, and insights on narrow screens, retains
+three columns on desktop, and resizes the board when its container or orientation
+changes. Main controls have at least 44px touch targets.
+
+Install Playwright (`npm install --no-save playwright` and `npx playwright install chromium`),
+then run `node tests/mobile-responsive.cjs`. The test starts a temporary Python 3
+HTTP server on port 18080; Python 3 and an available port are required. To test a
+live deployment instead, pass its URL as the final argument.
+
+For an existing Playwright install/browser, use:
+
+```sh
+PLAYWRIGHT_MODULE=/opt/homebrew/lib/node_modules/playwright \
+BROWSER_PATH="/Applications/Brave Browser.app/Contents/MacOS/Brave Browser" \
+node tests/mobile-responsive.cjs https://chess-insights.sahist.site/
+```
+
+The isolated headless test verifies 320/375/390/768/1440px widths, horizontal
+overflow, 64 squares and loaded images, touch targets, PGN load/navigation,
+board flipping, portrait/landscape resizing, engine readiness, and page errors.
+It is Chromium coverage, not a physical-device Safari test.
 
 ## Evaluation startup
 

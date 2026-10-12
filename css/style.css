@@ -752,3 +752,36 @@ header h1 { font-size: 2rem; margin-bottom: 4px; }
 
 .board-eval { margin: 8px 0 12px; color: #ddd; text-align: center; }
 .board-eval strong { color: #ffd166; font-variant-numeric: tabular-nums; }
+
+/* Responsive layout and touch controls. Keep the desktop three-column layout. */
+main { display: contents; }
+.board-section { min-width: 0; }
+.board-with-eval { width: 430px; max-width: 100%; min-width: 0; }
+#board-wrap { flex: 1 1 0; width: 400px; min-width: 0; min-height: 0; }
+#board { width: 100%; height: auto; }
+.eval-bar { min-height: 0; }
+.btn, .game-nav button, .coach-chip { min-height: 44px; touch-action: manipulation; }
+.game-nav button { min-width: 44px; }
+.board-help, .opening-name, .plan-panel, .analysis-section, .knowledge-panel { overflow-wrap: anywhere; }
+.toast { max-width: calc(100% - 24px); overflow-wrap: anywhere; }
+.knowledge-stats { flex-wrap: wrap; gap: 16px; }
+.knowledge-item { gap: 8px; }
+.knowledge-item .pattern { min-width: 0; }
+@media (max-width: 1200px) {
+    .container { grid-template-columns: minmax(0, 1fr); }
+    header { grid-row: 1; }
+    .board-section { grid-row: 2; order: 0; }
+    .left-panel { grid-row: 3; }
+    .analysis-section { grid-row: 4; }
+    .knowledge-panel { grid-row: 5; }
+}
+@media (max-width: 520px) {
+    .container { padding: 8px; gap: 12px; }
+    .game-nav { display: grid; grid-template-columns: repeat(5, minmax(44px, 1fr)); width: 100%; gap: 6px; }
+    #move-counter { grid-column: 1 / -1; grid-row: 2; }
+    .game-nav button { padding: 8px; }
+    #pgn-input, #coach-input, #top-n-moves { font-size: 16px; }
+    #top-n-moves { min-height: 44px; }
+    .move-list-table td { height: 44px; }
+    .debug-lines { white-space: pre-wrap; overflow-wrap: anywhere; }
+}

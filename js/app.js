@@ -1115,9 +1115,26 @@ function showToast(message) {
     setTimeout(() => toast.classList.add('hidden'), 3000);
 }
 
-window.addEventListener('resize', () => {
-    if (board) board.resize();
-    if (lastBestMoveUci) requestAnimationFrame(() => drawBestMoveArrow(lastBestMoveUci));
+window.addEventListener('resize', resizeResponsiveBoard);
+window.addEventListener('orientationchange', resizeResponsiveBoard);
+
+let boardResizeFrame = null;
+function resizeResponsiveBoard() {
+    if (boardResizeFrame !== null) cancelAnimationFrame(boardResizeFrame);
+    boardResizeFrame = requestAnimationFrame(() => {
+        boardResizeFrame = null;
+        if (!board) return;
+        board.resize();
+        if (lastBestMoveUci) drawBestMoveArrow(lastBestMoveUci);
+    });
+}
+
+// Observe the container, not the board whose height resize() changes.
+document.addEventListener('DOMContentLoaded', () => {
+    if (typeof ResizeObserver === 'function') {
+        const observer = new ResizeObserver(resizeResponsiveBoard);
+        observer.observe(document.querySelector('.board-with-eval'));
+    }
 });
 
 window.getCoachContext = () => ({
